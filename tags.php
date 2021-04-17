@@ -2,7 +2,9 @@
 
 /**
  * Generate Geany PHP Tags File
- * Usage: php tags.php <output> <files..>
+ * Usage: php tags.php
+ *        php tags.php <output> <dir>
+ *        php tags.php <output> <file..>
  **/
 
 /**

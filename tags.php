@@ -54,101 +54,113 @@ define('TAG_TYPE_FILE', 262144); // File (Pseudo tag) - obsolete
 define('TAG_TYPE_OTHER', 524288); // Other (non C/C++/Java tag)
 define('TAG_TYPE_MAX', 1048575); // Maximum value of TMTagType
 
-class Geany_Tags_Tag {
+function geany_tag_to_text($geanyTag){
 
-	public $name;
-	public $type;
-	public $arglist;
-	public $vartype;
-	public $scope;
+	$text = $geanyTag->name;
 
-	public function saveText() {
-		$text = $this->name;
-		if (is_null($this->type) == FALSE){
-			$text .= chr(TAG_PREFIX_TYPE).$this->type;
-		}
-		if (is_null($this->arglist) == FALSE){
-			$text .= chr(TAG_PREFIX_ARGLIST).$this->arglist;
-		}
-		if (is_null($this->vartype) == FALSE){
-			$text .= chr(TAG_PREFIX_VARTYPE).$this->vartype;
-		}
-		if (is_null($this->scope) == FALSE){
-			$text .= chr(TAG_PREFIX_SCOPE).$this->scope;
-		}
-		$text .= chr(TAG_PREFIX_POINTER).'0';
-		return $text;
+	if (is_null($geanyTag->type) == FALSE){
+		$text .= chr(TAG_PREFIX_TYPE).$geanyTag->type;
 	}
+
+	if (is_null($geanyTag->arglist) == FALSE){
+		$text .= chr(TAG_PREFIX_ARGLIST).$geanyTag->arglist;
+	}
+
+	if (is_null($geanyTag->vartype) == FALSE){
+		$text .= chr(TAG_PREFIX_VARTYPE).$geanyTag->vartype;
+	}
+
+	if (is_null($geanyTag->scope) == FALSE){
+		$text .= chr(TAG_PREFIX_SCOPE).$geanyTag->scope;
+	}
+
+	$text .= chr(TAG_PREFIX_POINTER).'0';
+	return $text;
 }
 
-class Geany_Tags_File {
-
-	protected $fileHandle;
-	protected $writeHeaderCompleted;
-	protected $tags;
-
-	public function __construct(){
-		$this->writeHeader = FALSE;
-		$this->tags = new \ArrayObject;
-	}
-
-	public function addTag(){
-		$tag = new Geany_Tags_Tag;
-		$this->tags->append($tag);
-		return $tag;
-	}
-
-	public function open($filePath){
-		$this->filePath = $filePath;
-	}
-
-	public function save(){
-
-		$fileLine = array();
-
-		foreach ($this->tags as $tag){
-			$fileLine[] = $tag->saveText();
-		}
-
-		sort($fileLine);
-		array_unshift($fileLine, "# format=tagmanager\n");
-
-		$fileText = implode("\n", $fileLine);
-
-		file_put_contents($this->filePath, $fileText);
-	}
+function geany_tags_file_create(){
+	$tagFile = new \stdClass;
+	$tagFile->tags = new \ArrayObject;
+	return $tagFile;
 }
 
-class Geany_Tags_Controller {
+function geany_tags_file_write($filePath, $tagFile){
 
-	public function __construct() {}
+	$fileLine = array();
 
-	public function execute(){
-
-		$tagFile = new Geany_Tags_File;
-
-		$tagFile->open(dirname(__FILE__).'/std.php.tags');
-		$constants = array();
-		$constantGroups = get_defined_constants(TRUE);
-
-		unset($constantGroups['user']);
-		foreach ($constantGroups as $constantGroup){
-			foreach (array_keys($constantGroup) as $constant){
-				$constants[] = $constant;
-			}
-		}
-
-		foreach ($constants as $constant){
-			$tag = $tagFile->addTag();
-			$tag->name = $constant;
-			$tag->type = TAG_TYPE_MACRO;
-		}
-
-		$tagFile->save();
+	foreach ($tagFile->tags as $geanyTag){
+		$fileLine[] = geany_tag_to_text($geanyTag);
 	}
+
+	sort($fileLine);
+	array_unshift($fileLine, "# format=tagmanager");
+
+	$fileText = implode("\n", $fileLine);
+
+	file_put_contents($filePath, $fileText);
+}
+
+function geany_tags_add($tagFile){
+
+	$geanyTag = new \stdClass;
+	$geanyTag->name = NULL;
+	$geanyTag->type = NULL;
+	$geanyTag->arglist = NULL;
+	$geanyTag->vartype = NULL;
+	$geanyTag->scope = NULL;
+
+	$tagFile->tags->append($geanyTag);
+
+	return $geanyTag;
+}
+
+function geany_write_tags_standard(){
+
+	$tagFile = geany_tags_file_create();
+	$tagFilePath = dirname(__FILE__).'/std.php.tags';
+
+	// contants
+
+	$constants = array();
+	$constantGroups = get_defined_constants(TRUE);
+	unset($constantGroups['user']);
+
+	foreach ($constantGroups as $constantGroup){
+		foreach (array_keys($constantGroup) as $constant){
+			$constants[] = $constant;
+		}
+	}
+
+	foreach ($constants as $constant){
+		$geanyTag = geany_tags_add($tagFile);
+		$geanyTag->name = $constant;
+		$geanyTag->type = TAG_TYPE_MACRO;
+	}
+
+	// functions
+
+	$functionGroups = get_defined_functions();
+	$functions = array_values($functionGroups['internal']);
+
+	foreach ($functions as $function){
+		$geanyTag = geany_tags_add($tagFile);
+		$geanyTag->name = $function;
+		$geanyTag->type = TAG_TYPE_FUNCTION;
+	}
+
+	// classes
+
+	$classes = get_declared_classes();
+
+	foreach ($classes as $class){
+		$geanyTag = geany_tags_add($tagFile);
+		$geanyTag->name = $class;
+		$geanyTag->type = TAG_TYPE_CLASS;
+	}
+
+	geany_tags_file_write($tagFilePath, $tagFile);
 }
 
 if (defined('FCPATH') == FALSE){
-	$controller = new \Geany_Tags_Controller;
-	$controller->execute();
+	geany_write_tags_standard();
 }

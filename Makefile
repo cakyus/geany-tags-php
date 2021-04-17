@@ -1,7 +1,11 @@
 build:
-	php $(PWD)/tags.php
+	php tags.php
 install:
-	find $(PWD) -maxdepth 1 -type f -name '*.tags' \
+	find . -maxdepth 1 -type f -name '*.tags' \
 		-print -exec cp {} $(HOME)/.config/geany/tags/ \;
+test:
+	geany -g tests/constants.php.tags tests/constants.php
+	geany -g tests/functions.php.tags tests/functions.php
+	geany -g tests/classes.php.tags tests/classes.php
 clean:
-	find $(PWD) -maxdepth 1 -type f -name '*.tags' -print -delete
+	find . -maxdepth 1 -type f -name '*.tags' -print -delete

@@ -89,33 +89,34 @@ class Geany_Tags_File {
 
 	public function __construct(){
 		$this->writeHeader = FALSE;
+		$this->tags = new \ArrayObject;
 	}
 
-	public function createTag($tagName){
+	public function addTag(){
 		$tag = new Geany_Tags_Tag;
-		$tag->name = $tagName;
+		$this->tags->append($tag);
 		return $tag;
 	}
 
-	public function writeTag($tag){
-		if ($this->writeHeaderCompleted == FALSE){
-			fwrite($this->fileHandle, "# format=tagmanager\n");
-			$this->writeHeaderCompleted = TRUE;
-		}
-		fwrite($this->fileHandle, $tag->saveText()."\n");
-	}
-
 	public function open($filePath){
-		$fileHandle = fopen($filePath, 'w+');
-		if ($fileHandle){
-			$this->fileHandle = $fileHandle;
+		$this->filePath = $filePath;
+	}
+
+	public function save(){
+
+		$fileLine = array();
+
+		foreach ($this->tags as $tag){
+			$fileLine[] = $tag->saveText();
 		}
-	}
 
-	public function close(){
-		fclose($this->fileHandle);
-	}
+		sort($fileLine);
+		array_unshift($fileLine, "# format=tagmanager\n");
 
+		$fileText = implode("\n", $fileLine);
+
+		file_put_contents($this->filePath, $fileText);
+	}
 }
 
 class Geany_Tags_Controller {
@@ -136,13 +137,14 @@ class Geany_Tags_Controller {
 				$constants[] = $constant;
 			}
 		}
+
 		foreach ($constants as $constant){
-			$tag = $tagFile->createTag($constant);
+			$tag = $tagFile->addTag();
+			$tag->name = $constant;
 			$tag->type = TAG_TYPE_MACRO;
-			$tagFile->writeTag($tag);
 		}
 
-		$tagFile->close();
+		$tagFile->save();
 	}
 }
 

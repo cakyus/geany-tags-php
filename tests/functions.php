@@ -1,3 +1,5 @@
 <?php
 
-function main(){}
+function main($args = array()){
+
+}

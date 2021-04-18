@@ -1,2 +1,5 @@
 # format=tagmanager
-Geany_TagsÌ1Ö0
+FileÌ1ÎGeany\TagsÖ0
+Geany\TagsÌ256Ö0
+__constructÌ16Í()ÎGeany\Tags::FileÖ0
+openÌ16Í(Geany File $file = NULL)ÎGeany\Tags::FileÖ0

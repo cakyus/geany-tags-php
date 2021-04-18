@@ -92,6 +92,7 @@ function geany_tags_file_write($filePath, $tagFile){
 		$fileLine[] = geany_tag_to_text($geanyTag);
 	}
 
+	$fileLine = array_unique($fileLine);
 	sort($fileLine);
 	array_unshift($fileLine, "# format=tagmanager");
 
@@ -142,20 +143,89 @@ function geany_write_tags_standard(){
 	$functionGroups = get_defined_functions();
 	$functions = array_values($functionGroups['internal']);
 
-	foreach ($functions as $function){
+	foreach ($functions as $functionName){
+
 		$geanyTag = geany_tags_add($tagFile);
-		$geanyTag->name = $function;
+
+		$geanyTag->name = $functionName;
 		$geanyTag->type = TAG_TYPE_FUNCTION;
+
+		$refFunction = new \ReflectionFunction($functionName);
+
+		$argList = array();
+
+		foreach ($refFunction->getParameters() as $refParameter){
+			$argItem = array();
+			if ($refParameter->isOptional() == TRUE){
+				$argItem[] = '*';
+			}
+			if ($refParameter->isPassedByReference() == TRUE){
+				$argItem[] = '&';
+			}
+			$argItem[] = '$'.$refParameter->getName();
+			$argList[] = implode('', $argItem);
+		}
+
+		$geanyTag->arglist = '('.implode(', ', $argList).')';
 	}
 
 	// classes
 
 	$classes = get_declared_classes();
 
-	foreach ($classes as $class){
+	foreach ($classes as $className){
+
+		$refClass = new \ReflectionClass($className);
+
+		$namespaceName = $refClass->getNamespaceName();
+
+		// class
+
 		$geanyTag = geany_tags_add($tagFile);
-		$geanyTag->name = $class;
+		$geanyTag->name = $className;
+		if (empty($namespaceName) == FALSE){
+			$geanyTag->scope = $namespaceName;
+		}
 		$geanyTag->type = TAG_TYPE_CLASS;
+
+		// namespace
+
+		if (empty($namespaceName) == FALSE){
+			$geanyTag = geany_tags_add($tagFile);
+			$geanyTag->name = $refClass->getNamespaceName();
+			$geanyTag->type = TAG_TYPE_NAMESPACE;
+		}
+
+		// methods
+
+		foreach ($refClass->getMethods() as $refMethod){
+
+			$geanyTag = geany_tags_add($tagFile);
+			$geanyTag->name = $refMethod->getName();
+			$geanyTag->type = TAG_TYPE_FUNCTION;
+
+			$argList = array();
+
+			foreach ($refMethod->getParameters() as $refParameter){
+				$argItem = array();
+				if ($refParameter->isOptional() == TRUE){
+					$argItem[] = '*';
+				}
+				if ($refParameter->isPassedByReference() == TRUE){
+					$argItem[] = '&';
+				}
+				$argItem[] = '$'.$refParameter->getName();
+				$argList[] = implode('', $argItem);
+			}
+
+			$geanyTag->arglist = '('.implode(', ', $argList).')';
+
+			if (empty($namespaceName) == FALSE){
+				$geanyTag->scope = $namespaceName.'::'.$className;
+			} else {
+				$geanyTag->scope = $className;
+			}
+		}
 	}
 
 	geany_tags_file_write($tagFilePath, $tagFile);
